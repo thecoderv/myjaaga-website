@@ -139,9 +139,84 @@ export const login = async (req, res) => {
       refreshToken,
       user,
     });
-    
   } catch (err) {
     console.log(err);
     return res.json({ error: "Something went wrong. Try Again" });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    //Get the email for which we have to reset the code
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    //Since we have to reset the password we create a temp reset code and add it to the user
+    if (!user) {
+      return res.json({ error: "Could not find user with this email" });
+    } else {
+      const resetCode = nanoid();
+      user.resetCode = resetCode;
+      const name = user.name;
+      await user.save();
+
+      const token = jwt.sign({ resetCode }, config.JWT_SECRET, {
+        expiresIn: "1hr",
+      });
+      //send email
+      const command = new SendEmailCommand(
+        emailTemplate(
+          email,
+          name,
+          `<p>Please click the link below to access your account.</p>
+                <a href="${config.CLIENT_URL}/auth/access-account/${token}">Access my Account</a>`,
+          config.REPLY_TO,
+          "Access your account"
+        )
+      );
+      try {
+        const data = await config.AWSSES.send(command);
+        console.log(data);
+        res.json({ ok: true });
+      } catch (err) {
+        console.error(err);
+        res.json({ ok: false });
+      }
+      //end send email
+    }
+  } catch (err) {
+    console.log(err);
+    return res.json({ error: "Something went wrong. Try Again" });
+  }
+};
+
+export const accessAccount = async (req, res) => {
+  try {
+    // Decode the resetcode from the access account url in email
+    const { resetCode } = jwt.verify(req.body.resetCode, config.JWT_SECRET);
+
+    // Find the user account using the resetcode and once it's used it's set to empty
+    //so that the user doesnt use it multiple times to login
+    const user = await User.findOneAndUpdate(
+      { resetCode: resetCode },
+      { resetCode: "" }
+    );
+
+    const token = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
+      expiresIn: "1hr",
+    });
+
+    const refreshToken = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    user.password = undefined;
+    user.resetCode = undefined;
+    return res.json({
+      token,
+      refreshToken,
+      user,
+    });
+  } catch (err) {
+    return res.json({ error: "Something went wrong. Try Again." });
   }
 };

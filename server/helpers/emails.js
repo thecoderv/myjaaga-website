@@ -21,7 +21,7 @@ export const emailTemplate = (email, name, content, replyTo, subject) => {
       },
       Subject: {
         Charset: "UTF-8",
-        Data: `Welcome to MyJaaga.`,
+        Data: subject,
       },
     },
   };
