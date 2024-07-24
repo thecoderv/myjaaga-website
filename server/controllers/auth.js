@@ -5,6 +5,7 @@ import { emailTemplate } from "../helpers/emails.js";
 import { hashPassword, comparePassword } from "../helpers/auth.js";
 import { nanoid } from "nanoid";
 import User from "../models/user.js";
+import validator from "email-validator";
 
 export const welcome = (req, res) => {
   res.json({
@@ -14,12 +15,36 @@ export const welcome = (req, res) => {
 
 export const preRegister = async (req, res) => {
   try {
-    console.log(req.body);
+    // console.log(req.body);
     const { email, name, password } = req.body;
+
+    //Validating email and password
+    if (!validator.validate(email)) {
+      return res.json({ error: "Invalid email." });
+    }
+    if (!password) {
+      return res.json({ error: "Password is required." });
+    }
+
+    if (password && password?.length<8) {
+      return res.json({ error: "Password should be at least 6 characters" });
+    }
+
+    //If user is already registered with the email then thats an error
+
+    const user = await User.findOne({email});
+    if(user){
+      return res.json({error:"An account with this email already exists."})
+    }
+
+    // JWT Token for the corresponding email and password.
+    // This will be sent to the user via email
     const token = jwt.sign({ email, password }, config.JWT_SECRET, {
       expiresIn: "1h",
     });
 
+    // New AWS SES v3 format
+    // Dont edit your template here, edit it in helper
     const command = new SendEmailCommand(
       emailTemplate(
         email,
@@ -46,6 +71,8 @@ export const preRegister = async (req, res) => {
 
 export const register = async (req, res) => {
   try {
+    //when user clicks on the link in email we need to verify and registration is completed
+
     const { email, password } = jwt.verify(req.body.token, config.JWT_SECRET);
 
     const hashedPassword = await hashPassword(password);
@@ -55,6 +82,8 @@ export const register = async (req, res) => {
       email,
       password: hashedPassword,
     });
+
+    //Adding user to the databse
 
     await user.save();
 
