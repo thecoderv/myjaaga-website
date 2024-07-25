@@ -210,6 +210,6 @@ export const refreshToken = async (req, res) => {
 
     tokenAndUserResponse(req, res, user);
   } catch (err) {
-    return res.json({ error: "Something went wrong. Try Again." });
+    return res.json({ error: "Something went wrong. Try Again!" });
   }
 };
