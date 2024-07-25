@@ -217,6 +217,6 @@ export const accessAccount = async (req, res) => {
       user,
     });
   } catch (err) {
-    return res.json({ error: "Something went wrong. Try Again." });
+    return res.json({ error: "Something went wrong. Try Again!" });
   }
 };
