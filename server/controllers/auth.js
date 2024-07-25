@@ -7,6 +7,23 @@ import { nanoid } from "nanoid";
 import User from "../models/user.js";
 import validator from "email-validator";
 
+export const tokenAndUserResponse = (req, res, user) => {
+  const token = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
+    expiresIn: "1hr",
+  });
+
+  const refreshToken = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+  user.password = undefined;
+  user.resetCode = undefined;
+  return res.json({
+    token,
+    refreshToken,
+    user,
+  });
+};
+
 export const welcome = (req, res) => {
   res.json({
     data: "Hello we need to authenticate!",
@@ -75,6 +92,12 @@ export const register = async (req, res) => {
 
     const { email, password } = jwt.verify(req.body.token, config.JWT_SECRET);
 
+    //If they try to click on link again after registering
+    const userExist = await User.findOne({ email });
+    if (user) {
+      return res.json({ error: "An account with this email already exists." });
+    }
+
     const hashedPassword = await hashPassword(password);
 
     const user = await new User({
@@ -84,25 +107,10 @@ export const register = async (req, res) => {
     });
 
     //Adding user to the databse
-
     await user.save();
 
-    //Creating JWT token
-
-    const token = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
-      expiresIn: "1hr",
-    });
-
-    const refreshToken = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-    user.password = undefined;
-    user.resetCode = undefined;
-    return res.json({
-      token,
-      refreshToken,
-      user,
-    });
+    //Creating JWT token and send response
+    tokenAndUserResponse(req, res, user);
   } catch (err) {
     console.log(err);
     return res.json({
@@ -124,21 +132,8 @@ export const login = async (req, res) => {
     if (!match) {
       return res.json({ error: "Wrong password" });
     }
-    //Create JWT Token
-    const token = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
-      expiresIn: "1hr",
-    });
-
-    const refreshToken = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-    user.password = undefined;
-    user.resetCode = undefined;
-    return res.json({
-      token,
-      refreshToken,
-      user,
-    });
+    //Create JWT Token and send response
+    tokenAndUserResponse(req, res, user);
   } catch (err) {
     console.log(err);
     return res.json({ error: "Something went wrong. Try Again" });
@@ -202,20 +197,7 @@ export const accessAccount = async (req, res) => {
       { resetCode: "" }
     );
 
-    const token = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
-      expiresIn: "1hr",
-    });
-
-    const refreshToken = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-    user.password = undefined;
-    user.resetCode = undefined;
-    return res.json({
-      token,
-      refreshToken,
-      user,
-    });
+    tokenAndUserResponse(req, res, user);
   } catch (err) {
     return res.json({ error: "Something went wrong. Try Again." });
   }
@@ -226,20 +208,7 @@ export const refreshToken = async (req, res) => {
     const { _id } = jwt.verify(req.headers.refreshToken, config.JWT_SECRET);
     const user = await User.findById(_id);
 
-    const token = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
-      expiresIn: "1hr",
-    });
-
-    const refreshToken = jwt.sign({ _id: user._id }, config.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-    user.password = undefined;
-    user.resetCode = undefined;
-    return res.json({
-      token,
-      refreshToken,
-      user,
-    });
+    tokenAndUserResponse(req, res, user);
   } catch (err) {
     return res.json({ error: "Something went wrong. Try Again." });
   }
