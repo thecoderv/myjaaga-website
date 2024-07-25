@@ -207,10 +207,32 @@ export const refreshToken = async (req, res) => {
   try {
     const { _id } = jwt.verify(req.headers.refresh_token, config.JWT_SECRET);
     const user = await User.findById(_id);
-    
 
     tokenAndUserResponse(req, res, user);
   } catch (err) {
     return res.status(403).json({ error: "Refresh Token failes!" });
+  }
+};
+
+export const currentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    user.password = undefined;
+    user.resetCode = undefined;
+    res.json(user);
+  } catch (err) {
+    console.log(err);
+    return res.status(403).json({ error: "Unauthorized." });
+  }
+};
+
+export const publicProfile = async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    user.password = undefined;
+    user.resetCode = undefined;
+    res.json(user);
+  } catch (err) {
+    return res.json({ error: "User Not found." });
   }
 };
