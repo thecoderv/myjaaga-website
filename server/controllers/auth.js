@@ -94,7 +94,7 @@ export const register = async (req, res) => {
 
     //If they try to click on link again after registering
     const userExist = await User.findOne({ email });
-    if (user) {
+    if (userExist) {
       return res.json({ error: "An account with this email already exists." });
     }
 
@@ -163,10 +163,10 @@ export const forgotPassword = async (req, res) => {
         emailTemplate(
           email,
           name,
-          `<p>Please click the link below to access your account.</p>
-                <a href="${config.CLIENT_URL}/auth/access-account/${token}">Access my Account</a>`,
+          `<p>access your account.</p>
+                <a href="${config.CLIENT_URL}/auth/access-account/${token}">my Account</a>`,
           config.REPLY_TO,
-          "Access your account"
+          "your account"
         )
       );
       try {
@@ -205,11 +205,12 @@ export const accessAccount = async (req, res) => {
 
 export const refreshToken = async (req, res) => {
   try {
-    const { _id } = jwt.verify(req.headers.refreshToken, config.JWT_SECRET);
+    const { _id } = jwt.verify(req.headers.refresh_token, config.JWT_SECRET);
     const user = await User.findById(_id);
+    
 
     tokenAndUserResponse(req, res, user);
   } catch (err) {
-    return res.json({ error: "Something went wrong. Try Again!" });
+    return res.status(403).json({ error: "Refresh Token failes!" });
   }
 };
